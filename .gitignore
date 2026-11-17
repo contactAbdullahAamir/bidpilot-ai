@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.next/
+*.tsbuildinfo
+.data/
+storage/
+.env
+.env.*
+!.env.example
+
+# Local test credentials
+*.local.txt
+
+# Local editor/agent tooling
+.claude/

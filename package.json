@@ -1,0 +1,23 @@
+{
+  "name": "bidpilot-ai",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "npm run build --workspaces",
+    "test": "npm run build --workspace @bidpilot/contracts --workspace @bidpilot/api --workspace @bidpilot/ai-orchestrator && npm run test --workspaces",
+    "typecheck": "npm run typecheck --workspaces"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
+  }
+}

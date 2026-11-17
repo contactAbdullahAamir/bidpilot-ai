@@ -1,0 +1,34 @@
+{
+  "name": "@bidpilot/api",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/src/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/src/main.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test dist/test/",
+    "dev": "tsc -p tsconfig.json && node dist/src/main.js"
+  },
+  "dependencies": {
+    "@bidpilot/contracts": "0.1.0",
+    "@electric-sql/pglite": "^0.5.16",
+    "@nestjs/common": "^10.4.15",
+    "@nestjs/core": "^10.4.15",
+    "@nestjs/platform-express": "^10.4.15",
+    "mammoth": "^1.13.0",
+    "pdfkit": "^0.20.2",
+    "pg": "^8.13.1",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1",
+    "unpdf": "^2.2.1",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/multer": "^2.3.0",
+    "@types/node": "^22.10.2",
+    "@types/pdfkit": "^0.17.7",
+    "@types/pg": "^8.11.10"
+  }
+}

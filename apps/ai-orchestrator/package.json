@@ -1,0 +1,26 @@
+{
+  "name": "@bidpilot/ai-orchestrator",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/src/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/src/main.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test dist/test/",
+    "dev": "tsc -p tsconfig.json && node dist/src/main.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.9.0",
+    "@nestjs/common": "^10.4.15",
+    "@nestjs/core": "^10.4.15",
+    "@nestjs/platform-express": "^10.4.15",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1",
+    "zod": "^3.24.1",
+    "@bidpilot/contracts": "0.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2"
+  }
+}
