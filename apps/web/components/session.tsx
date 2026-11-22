@@ -62,7 +62,7 @@ export function SessionProvider({ children, fallback }: { children: ReactNode; f
       } catch {
         /* ignore */
       }
-      window.location.href = "/login";
+      window.location.href = session.demo ? "/" : "/login";
     }
   };
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

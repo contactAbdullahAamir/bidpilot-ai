@@ -119,7 +119,14 @@ function Shell({ children }: { children: ReactNode }) {
           <span className="brand-mark small">B</span>
           <strong>{organizationName}</strong>
         </header>
-        {session.user.emailVerified === false && <VerifyBanner email={session.user.email} />}
+        {session.demo && (
+          <div className="demo-banner" role="status">
+            <Icons.sparkles size={15} />
+            <span className="grow">You're in a private demo workspace with synthetic data. Open <strong>Proposal studio</strong>, <strong>Compliance</strong> and <strong>Review</strong> to see the full flow.</span>
+            <Link href="/signup" className="link-btn">Create your own workspace</Link>
+          </div>
+        )}
+        {!session.demo && session.user.emailVerified === false && <VerifyBanner email={session.user.email} />}
         {children}
       </div>
     </div>

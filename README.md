@@ -1,10 +1,37 @@
 # BidPilot AI
 
-**Turn complex RFPs into confident, evidence-backed proposals.**
+**Turn complex RFPs into compliant, evidence-backed proposals.**
 
 BidPilot reads an RFP, extracts every requirement with its source page, checks your eligibility against approved company credentials, drafts every proposal section with citations to your own evidence, verifies coverage and claims, and routes the result through human review to a locked, checksummed PDF.
 
+![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178c6) ![Next.js](https://img.shields.io/badge/Next.js-14-000000) ![NestJS](https://img.shields.io/badge/NestJS-10-e0234e) ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pgvector-336791) ![LLMs](https://img.shields.io/badge/LLM-Claude%20%7C%20Gemini%20%7C%20Groq%20%7C%20Ollama-5fb28f) ![Tests](https://img.shields.io/badge/tests-28%20passing-2f8a5b)
+
+![BidPilot AI landing page](docs/screenshots/01-landing.png)
+
 > Demo data is fully synthetic (fictional *CivicWorks Department* and *Northstar Digital Solutions*). No metrics in this repo are measured product results.
+
+## Try it in one click
+
+Run it locally (below), open http://localhost:3000 and press **Try the live demo**. No sign-up is needed. You get a private sandbox workspace, the sample RFP loads, and the AI analysis starts automatically.
+
+## What it does
+
+| | |
+|---|---|
+| ![Opportunity overview](docs/screenshots/02-overview.png) | ![Requirements with page citations](docs/screenshots/03-requirements.png) |
+| **Opportunity workspace.** A six-stage pipeline with live progress, from documents to approval. | **Requirements.** Each one is extracted with its category, mandatory flag, source page and coverage. |
+| ![Go / No-Go qualification](docs/screenshots/04-qualification.png) | ![Proposal Studio with citations](docs/screenshots/05-proposal-studio.png) |
+| **Qualification.** Mandatory criteria are checked against approved evidence. The missing SOC 2 report is caught before writing starts. | **Proposal Studio.** Sections are drafted by technical and management writers. Every claim links to the evidence that supports it. |
+| ![Compliance matrix](docs/screenshots/06-compliance.png) | ![Review and approval](docs/screenshots/07-review.png) |
+| **Compliance.** Coverage score, claims that need confirmation, and a full requirement-to-section matrix. | **Review and export.** Readiness checks, reviewer decisions, a locked SHA-256 snapshot and a PDF export. |
+
+## Highlights for reviewers
+
+- **Grounded AI, not a chat wrapper.** Model output is schema-validated (Zod). Quotes are checked against the source pages, and citations must resolve to approved evidence. A claim without evidence can never be marked "supported".
+- **Model-agnostic.** Claude (structured outputs, adaptive thinking), any OpenAI-compatible API (Gemini, Groq, OpenRouter, Ollama), or a deterministic offline engine for CI and demos.
+- **Real backend engineering.** Three services, a persisted and resumable workflow graph, multi-tenant RBAC, an audit log, versioned knowledge, immutable approvals, and PDF rendering.
+- **Production account features.** Email verification, password reset, email invitations, role management, rate limiting and security headers.
+- **Tested.** Contract, API and pipeline tests run on real PostgreSQL (PGlite) in GitHub Actions.
 
 ## Quick start (no Docker, no API key)
 
@@ -15,7 +42,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000, create a workspace, and click **Load sample workspace**, then **Analyze RFP**. Within seconds you'll see:
+Open http://localhost:3000 and click **Try the live demo**. Or create a workspace, click **Load sample workspace**, then **Analyze RFP**. Within seconds you'll see:
 
 - 23 requirements extracted with page citations, and an ambiguous deadline flagged for confirmation
 - A **Conditional** bid recommendation, because the sample company lacks the required SOC 2 Type II report
@@ -99,6 +126,8 @@ Teammates join by **email invitation** (Team & settings → Invite member). New 
 Without `RESEND_API_KEY`, emails are printed to the API log (look for `──── email`), so you can click the links locally. To send real email, create a free [Resend](https://resend.com) key, verify your sending domain, and set `RESEND_API_KEY`, `MAIL_FROM` and `APP_URL` (the public web URL used in links).
 
 Sign-in, sign-up, password reset and invitation routes are rate-limited per IP address and per email. The limiter is in memory, so if you run more than one API replica, move it to Redis.
+
+The one-click demo (`POST /api/v1/demo/start`) creates a separate throwaway workspace per visitor and is limited to 5 per IP per hour. Set `DEMO_ENABLED=false` to turn it off on a real deployment.
 
 ## Development
 

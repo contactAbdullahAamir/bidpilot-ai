@@ -28,6 +28,8 @@ import { actionEmail, appUrl, MailService } from "../core/mail";
 const scrypt = promisify(scryptCallback) as (password: string, salt: Buffer, keylen: number) => Promise<Buffer>;
 
 export const SESSION_COOKIE = "bp_session";
+/** Accounts created by the one-click demo use this non-routable email domain. */
+export const DEMO_EMAIL_DOMAIN = "demo.bidpilot.invalid";
 const SESSION_DAYS = 14;
 
 export interface AuthContext {

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useState } from "react";
 import { api } from "../../../lib/api";
 import { Button, Field } from "../../../components/ui";
+import { DemoButton } from "../../../components/demo-button";
 
 function LoginForm() {
   const router = useRouter();
@@ -37,6 +38,9 @@ function LoginForm() {
       <Field label="Password" hint={<Link href="/forgot-password">Forgot your password?</Link>}>{(id) => <input id={id} type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />}</Field>
       <Button variant="primary" type="submit" loading={busy} className="btn-block">Sign in</Button>
       <p className="muted center">New to BidPilot? <Link href="/signup">Create a workspace</Link></p>
+      <div className="auth-divider">or</div>
+      <DemoButton label="Explore the live demo" variant="secondary" />
+      <p className="muted center"><Link href="/">← Back to the product tour</Link></p>
     </form>
   );
 }

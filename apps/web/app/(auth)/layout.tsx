@@ -1,10 +1,11 @@
+import Link from "next/link";
 import type { ReactNode } from "react";
 
 export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <div className="auth">
       <section className="auth-panel">
-        <div className="brand"><span className="brand-mark">B</span><span>BidPilot <em>AI</em></span></div>
+        <Link href="/" className="brand"><span className="brand-mark">B</span><span>BidPilot <em>AI</em></span></Link>
         <div className="auth-pitch">
           <p className="eyebrow">Evidence-backed proposal orchestration</p>
           <h1>Turn complex RFPs into <span>confident proposals.</span></h1>

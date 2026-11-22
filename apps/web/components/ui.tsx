@@ -9,7 +9,7 @@ import { Icons, type IconName } from "./icons";
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: "primary" | "secondary" | "ghost" | "danger";
-  size?: "sm" | "md";
+  size?: "sm" | "md" | "lg";
   icon?: IconName;
   loading?: boolean;
 };

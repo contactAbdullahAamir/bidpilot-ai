@@ -123,6 +123,7 @@ code, .code { font-family: var(--mono); font-size: 12px; }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
 .btn-md { padding: 9px 15px; font-size: 13.5px; }
 .btn-sm { padding: 6px 10px; font-size: 12.5px; }
+.btn-lg { padding: 13px 22px; font-size: 15px; border-radius: 10px; }
 .btn-primary { background: var(--accent); color: var(--accent-ink); box-shadow: var(--shadow-sm); }
 .btn-primary:hover:not(:disabled) { background: var(--accent-strong); }
 .btn-secondary { background: var(--surface); border-color: var(--line-strong); color: var(--ink); }
@@ -597,3 +598,10 @@ code, .code { font-family: var(--mono); font-size: 12px; }
   .verify-banner { padding: 10px 16px; flex-wrap: wrap; }
   .member-actions { flex-wrap: wrap; justify-content: flex-end; }
 }
+.demo-banner { display: flex; align-items: center; gap: 10px; padding: 9px 36px; background: var(--accent-soft); color: var(--accent); font-size: 13px; line-height: 1.45; border-bottom: 1px solid color-mix(in srgb, var(--accent) 22%, transparent); }
+.demo-banner svg { flex-shrink: 0; }
+.demo-banner strong { color: var(--ink); font-weight: 600; }
+@media (max-width: 720px) { .demo-banner { padding: 9px 16px; flex-wrap: wrap; } }
+.auth-divider { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 12px; }
+.auth-divider::before, .auth-divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.auth-card .demo-cta, .auth-card .demo-cta .btn { width: 100%; }

@@ -1,13 +1,18 @@
-import { Controller, Get, Post } from "@nestjs/common";
+import { Controller, Get, HttpCode, NotFoundException, Post, Res } from "@nestjs/common";
 import type { Dashboard, KnowledgeKind } from "@bidpilot/contracts";
 import { randomUUID } from "node:crypto";
-import { Auth, AuthContext, Public, RequirePermission } from "../auth/auth";
+import type { Response } from "express";
+import { Auth, AuthContext, AuthService, DEMO_EMAIL_DOMAIN, hashPassword, Public, RequirePermission } from "../auth/auth";
+import { setSessionCookie } from "../auth/auth.controller";
+import { RateLimit } from "../core/security";
 import { AuditService, StorageService } from "../core/common";
 import { DatabaseService, isoRequired } from "../core/database.service";
 import { splitIntoPages } from "../documents/parser";
 import { KnowledgeService } from "../knowledge/knowledge";
 import { OpportunitiesService } from "../opportunities/opportunities";
 import { OrchestratorClient } from "../workflows/orchestrator.client";
+import { WorkflowsService } from "../workflows/workflows";
+
 
 /**
  * Fully synthetic demo scenario from the blueprint: fictional CivicWorks
@@ -169,7 +174,9 @@ export class DemoController {
     private readonly opportunities: OpportunitiesService,
     private readonly storage: StorageService,
     private readonly audit: AuditService,
-    private readonly orchestrator: OrchestratorClient
+    private readonly orchestrator: OrchestratorClient,
+    private readonly workflows: WorkflowsService,
+    private readonly auth: AuthService
   ) {}
 
   @Public()
@@ -186,7 +193,38 @@ export class DemoController {
 
   @Post("demo/seed")
   @RequirePermission("manageOpportunities")
-  async seed(@Auth() auth: AuthContext) {
+  seed(@Auth() auth: AuthContext) {
+    return this.seedWorkspace(auth);
+  }
+
+  /**
+   * One-click live demo for visitors (portfolio / sales demos): creates a
+   * private throwaway workspace, loads the sample RFP and knowledge, starts
+   * the AI analysis and signs the visitor in. Disable with DEMO_ENABLED=false.
+   */
+  @Public()
+  @Post("demo/start")
+  @HttpCode(200)
+  @RateLimit({ name: "demo-start", limit: 5, windowMs: 60 * 60_000 })
+  async start(@Res({ passthrough: true }) response: Response) {
+    if (process.env.DEMO_ENABLED === "false") throw new NotFoundException("The live demo is turned off on this server.");
+    const userId = randomUUID();
+    const organizationId = `org_${randomUUID().replace(/-/g, "").slice(0, 16)}`;
+    const email = `visitor-${userId.slice(0, 8)}@${DEMO_EMAIL_DOMAIN}`;
+    const auth: AuthContext = { userId, userName: "Demo Visitor", email, organizationId, role: "owner" };
+    await this.db.transaction(async (tx) => {
+      // Random unusable password: demo accounts can only be entered through this endpoint.
+      await tx.query("INSERT INTO users (id, email, name, password_hash, email_verified_at) VALUES ($1,$2,$3,$4, now())", [userId, email, auth.userName, await hashPassword(randomUUID())]);
+      await tx.query("INSERT INTO organizations (id, name) VALUES ($1,$2)", [organizationId, "Northstar Digital Solutions (demo)"]);
+      await tx.query("INSERT INTO memberships (organization_id, user_id, role) VALUES ($1,$2,'owner')", [organizationId, userId]);
+    });
+    const { opportunityId } = await this.seedWorkspace(auth);
+    await this.workflows.startAnalysis(auth, opportunityId);
+    setSessionCookie(response, await this.auth.createSession(userId));
+    return { opportunityId, organizationId };
+  }
+
+  private async seedWorkspace(auth: AuthContext): Promise<{ opportunityId: string; createdAssets: number }> {
     const existingAssets = await this.db.query<{ title: string }>("SELECT title FROM knowledge_assets WHERE organization_id = $1", [auth.organizationId]);
     const titles = new Set(existingAssets.map((a) => a.title));
     let createdAssets = 0;

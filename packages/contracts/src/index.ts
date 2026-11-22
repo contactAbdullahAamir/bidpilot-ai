@@ -89,7 +89,9 @@ export const sessionSchema = z.object({
   memberships: z.array(membershipSchema),
   activeOrganizationId: z.string(),
   aiMode: aiModeSchema.optional(),
-  aiModel: z.string().nullable().optional()
+  aiModel: z.string().nullable().optional(),
+  /** True for throwaway workspaces created by the one-click demo. */
+  demo: z.boolean().optional()
 });
 
 // ---------------------------------------------------------------------------

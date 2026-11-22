@@ -15,12 +15,12 @@ import type { Request, Response } from "express";
 import { DatabaseService } from "../core/database.service";
 import { RateLimit } from "../core/security";
 import { OrchestratorClient } from "../workflows/orchestrator.client";
-import { Auth, AuthContext, AuthService, Public, readSessionToken, RequirePermission, SESSION_COOKIE } from "./auth";
+import { Auth, AuthContext, AuthService, DEMO_EMAIL_DOMAIN, Public, readSessionToken, RequirePermission, SESSION_COOKIE } from "./auth";
 import { InvitationsService } from "./invitations";
 
 const MINUTE = 60_000;
 
-function setSessionCookie(response: Response, token: string): void {
+export function setSessionCookie(response: Response, token: string): void {
   response.cookie(SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
@@ -139,7 +139,8 @@ export class AuthController {
       memberships: resolved!.memberships,
       activeOrganizationId: auth.organizationId,
       aiMode: engine.mode,
-      aiModel: engine.model
+      aiModel: engine.model,
+      demo: resolved!.user.email.endsWith(`@${DEMO_EMAIL_DOMAIN}`)
     };
   }
 }
