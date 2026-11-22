@@ -19,20 +19,26 @@ import { NestFactory } from "@nestjs/core";
 import type { Request } from "express";
 import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
-import { ClaudeProvider, MODEL_CONFIG } from "./providers/claude";
+import { ClaudeProvider } from "./providers/claude";
 import { HeuristicProvider } from "./providers/heuristic";
+import { OpenAICompatibleProvider, openAICompatibleConfig } from "./providers/openai-compatible";
 import type { ModelProvider } from "./providers/types";
 import { WorkflowRunner } from "./runner";
 
 /**
- * Provider selection: Claude when Anthropic credentials are configured
- * (or BIDPILOT_AI_MODE=claude), otherwise the deterministic heuristic
- * provider so the product works end-to-end offline.
+ * Provider selection:
+ * 1. BIDPILOT_AI_MODE forces "claude", "openai" (any OpenAI-compatible API) or "heuristic".
+ * 2. Otherwise Claude when Anthropic credentials are configured,
+ * 3. then an OpenAI-compatible API (Gemini, Groq, OpenRouter, Ollama...) when LLM_* or a preset key is set,
+ * 4. else the deterministic heuristic provider so the product works end-to-end offline.
  */
-export function selectProvider(): ModelProvider {
-  const forced = process.env.BIDPILOT_AI_MODE;
+export function selectProvider(env: NodeJS.ProcessEnv = process.env): ModelProvider {
+  const forced = env.BIDPILOT_AI_MODE;
   if (forced === "heuristic") return new HeuristicProvider();
-  if (forced === "claude" || process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN) return new ClaudeProvider();
+  if (forced === "claude" || (!forced && (env.ANTHROPIC_API_KEY || env.ANTHROPIC_AUTH_TOKEN))) return new ClaudeProvider();
+  const compatible = openAICompatibleConfig(env);
+  if (compatible) return new OpenAICompatibleProvider(compatible);
+  if (forced === "openai") throw new Error("BIDPILOT_AI_MODE=openai needs LLM_PROVIDER/LLM_BASE_URL and an API key (e.g. GEMINI_API_KEY).");
   return new HeuristicProvider();
 }
 
@@ -78,7 +84,7 @@ class HealthController {
       status: "ok",
       service: "ai-orchestrator",
       mode: provider.mode,
-      model: provider.mode === "claude" ? MODEL_CONFIG.model : null,
+      model: provider.model ?? null,
       activeWorkflows: runner.activeCount
     };
   }
@@ -92,7 +98,7 @@ async function bootstrap(): Promise<void> {
   app.setGlobalPrefix("api");
   const port = Number(process.env.PORT ?? 8000);
   await app.listen(port);
-  Logger.log(`AI orchestrator on :${port} using ${provider.mode === "claude" ? `Claude (${MODEL_CONFIG.model})` : "heuristic provider (set ANTHROPIC_API_KEY for Claude)"}`, "Bootstrap");
+  Logger.log(`AI orchestrator on :${port} using ${provider.model ? `${provider.mode} (${provider.model})` : "heuristic provider (set an AI API key in .env to use a real model)"}`, "Bootstrap");
 }
 
 if (require.main === module) void bootstrap();

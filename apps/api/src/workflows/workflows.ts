@@ -69,7 +69,7 @@ type WorkflowRow = {
   status: WorkflowStatus;
   current_step: WorkflowStepName | null;
   error: string | null;
-  mode: "claude" | "heuristic" | null;
+  mode: "claude" | "openai" | "heuristic" | null;
   usage: unknown;
   revision: unknown;
   source_workflow_id: string | null;
@@ -372,7 +372,7 @@ export class WorkflowsService implements OnModuleInit, OnModuleDestroy {
   async internalStep(
     id: string,
     stepName: string,
-    body: { status: "running" | "completed" | "failed"; output?: unknown; error?: string; usage?: { inputTokens: number; outputTokens: number; estimatedCostUsd: number }; mode?: "claude" | "heuristic" }
+    body: { status: "running" | "completed" | "failed"; output?: unknown; error?: string; usage?: { inputTokens: number; outputTokens: number; estimatedCostUsd: number }; mode?: "claude" | "openai" | "heuristic" }
   ): Promise<{ accepted: boolean }> {
     const step = workflowStepNameSchema.parse(stepName);
     const row = await this.row(id);

@@ -4,9 +4,15 @@ import { Logger } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import type { NestExpressApplication } from "@nestjs/platform-express";
 import { AppModule } from "./app.module";
+import { securityHeaders } from "./core/security";
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { bodyParser: true });
+  // The web app proxies /api/v1 from the same host; trust its X-Forwarded-For so
+  // rate limits apply per real client. Set TRUST_PROXY for your load balancer (e.g. "1").
+  app.set("trust proxy", process.env.TRUST_PROXY ?? "loopback, linklocal, uniquelocal");
+  app.disable("x-powered-by");
+  app.use(securityHeaders);
   app.useBodyParser("json", { limit: "5mb" });
   app.enableCors({ origin: process.env.WEB_ORIGIN ?? "http://localhost:3000", credentials: true });
   app.setGlobalPrefix("api/v1");

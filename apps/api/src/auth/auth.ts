@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   CanActivate,
   ConflictException,
   createParamDecorator,
@@ -22,6 +23,7 @@ import { randomBytes, randomUUID, scrypt as scryptCallback, timingSafeEqual } fr
 import { promisify } from "node:util";
 import { AuditService, sha256 } from "../core/common";
 import { DatabaseService, Queryable } from "../core/database.service";
+import { actionEmail, appUrl, MailService } from "../core/mail";
 
 const scrypt = promisify(scryptCallback) as (password: string, salt: Buffer, keylen: number) => Promise<Buffer>;
 
@@ -73,9 +75,17 @@ export function readSessionToken(request: Request): string | null {
   return null;
 }
 
+export type TokenPurpose = "verify_email" | "reset_password";
+const TOKEN_TTL: Record<TokenPurpose, string> = { verify_email: "3 days", reset_password: "1 hour" };
+
+/** Random URL-safe secret; only its SHA-256 is stored. */
+export function newSecret(): string {
+  return randomBytes(32).toString("base64url");
+}
+
 @Injectable()
 export class AuthService {
-  constructor(private readonly db: DatabaseService, private readonly audit: AuditService) {}
+  constructor(private readonly db: DatabaseService, private readonly audit: AuditService, private readonly mail: MailService) {}
 
   async signup(input: Signup): Promise<{ token: string; userId: string; organizationId: string }> {
     const existing = await this.db.query("SELECT id FROM users WHERE email = $1", [input.email]);
@@ -89,7 +99,91 @@ export class AuthService {
       await tx.query("INSERT INTO memberships (organization_id, user_id, role) VALUES ($1,$2,'owner')", [organizationId, userId]);
       await this.audit.log({ organizationId, actorId: userId, action: "organization.created", entityType: "organization", entityId: organizationId, entityLabel: input.organizationName }, tx);
     });
+    await this.sendVerificationEmail(userId);
     return { token: await this.createSession(userId), userId, organizationId };
+  }
+
+  private async issueToken(userId: string, purpose: TokenPurpose, tx: Queryable = this.db): Promise<string> {
+    // Only the newest link of each kind works.
+    await tx.query("UPDATE auth_tokens SET used_at = now() WHERE user_id = $1 AND purpose = $2 AND used_at IS NULL", [userId, purpose]);
+    const secret = newSecret();
+    await tx.query(`INSERT INTO auth_tokens (token_hash, user_id, purpose, expires_at) VALUES ($1, $2, $3, now() + interval '${TOKEN_TTL[purpose]}')`, [sha256(secret), userId, purpose]);
+    return secret;
+  }
+
+  /** Marks a token used and returns its user, or null if it is unknown, used or expired. */
+  private async consumeToken(secret: string, purpose: TokenPurpose, tx: Queryable = this.db): Promise<string | null> {
+    const rows = await tx.query<{ user_id: string }>(
+      `UPDATE auth_tokens SET used_at = now()
+       WHERE token_hash = $1 AND purpose = $2 AND used_at IS NULL AND expires_at > now()
+       RETURNING user_id`,
+      [sha256(secret), purpose]
+    );
+    return rows[0]?.user_id ?? null;
+  }
+
+  async sendVerificationEmail(userId: string): Promise<void> {
+    const rows = await this.db.query<{ email: string; name: string; email_verified_at: Date | null }>("SELECT email, name, email_verified_at FROM users WHERE id = $1", [userId]);
+    const user = rows[0];
+    if (!user || user.email_verified_at) return;
+    const secret = await this.issueToken(userId, "verify_email");
+    await this.mail.send(
+      actionEmail({
+        to: user.email,
+        subject: "Confirm your email for BidPilot AI",
+        intro: `Hi ${user.name}, please confirm that this is your email address so we can send you deadline alerts and account notices.`,
+        action: "Confirm email",
+        url: appUrl(`/verify-email?token=${secret}`),
+        outro: "This link expires in 3 days. If you didn't create a BidPilot account, you can ignore this email."
+      })
+    );
+  }
+
+  async verifyEmail(secret: string): Promise<void> {
+    const userId = await this.consumeToken(secret, "verify_email");
+    if (!userId) throw new BadRequestException("This confirmation link is invalid or has expired. Sign in and request a new one.");
+    await this.db.query("UPDATE users SET email_verified_at = coalesce(email_verified_at, now()) WHERE id = $1", [userId]);
+  }
+
+  /** Always succeeds, so the response never reveals whether an account exists. */
+  async requestPasswordReset(email: string): Promise<void> {
+    const rows = await this.db.query<{ id: string; name: string }>("SELECT id, name FROM users WHERE email = $1", [email]);
+    const user = rows[0];
+    if (!user) return;
+    const secret = await this.issueToken(user.id, "reset_password");
+    await this.mail.send(
+      actionEmail({
+        to: email,
+        subject: "Reset your BidPilot AI password",
+        intro: `Hi ${user.name}, we received a request to reset your password.`,
+        action: "Choose a new password",
+        url: appUrl(`/reset-password?token=${secret}`),
+        outro: "This link expires in 1 hour and can be used once. If you didn't ask for this, you can ignore this email; your password won't change."
+      })
+    );
+  }
+
+  /** Sets a new password, signs out every device, and returns a fresh session. */
+  async resetPassword(secret: string, password: string): Promise<{ token: string }> {
+    const passwordHash = await hashPassword(password);
+    return this.db.transaction(async (tx) => {
+      const userId = await this.consumeToken(secret, "reset_password", tx);
+      if (!userId) throw new BadRequestException("This reset link is invalid or has expired. Request a new one.");
+      // Receiving the email proves the address, so it also counts as verification.
+      await tx.query("UPDATE users SET password_hash = $2, password_changed_at = now(), email_verified_at = coalesce(email_verified_at, now()) WHERE id = $1", [userId, passwordHash]);
+      await tx.query("DELETE FROM sessions WHERE user_id = $1", [userId]);
+      return { token: await this.createSession(userId, tx) };
+    });
+  }
+
+  /** Changes the password and signs out every other session. */
+  async changePassword(userId: string, currentToken: string, currentPassword: string, newPassword: string): Promise<void> {
+    const rows = await this.db.query<{ password_hash: string }>("SELECT password_hash FROM users WHERE id = $1", [userId]);
+    if (!rows[0] || !(await verifyPassword(currentPassword, rows[0].password_hash))) throw new BadRequestException("Your current password is incorrect.");
+    await this.db.transaction(async (tx) => {
+      await tx.query("UPDATE users SET password_hash = $2, password_changed_at = now() WHERE id = $1", [userId, await hashPassword(newPassword)]);
+      await tx.query("DELETE FROM sessions WHERE user_id = $1 AND token_hash <> $2", [userId, sha256(currentToken)]);
+    });
   }
 
   async login(email: string, password: string): Promise<{ token: string }> {
@@ -115,13 +209,14 @@ export class AuthService {
   }
 
   async resolve(token: string): Promise<{ user: Session["user"]; memberships: Membership[] } | null> {
-    const users = await this.db.query<{ id: string; name: string; email: string }>(
-      `SELECT u.id, u.name, u.email FROM sessions s JOIN users u ON u.id = s.user_id
+    const users = await this.db.query<{ id: string; name: string; email: string; email_verified_at: Date | null }>(
+      `SELECT u.id, u.name, u.email, u.email_verified_at FROM sessions s JOIN users u ON u.id = s.user_id
        WHERE s.token_hash = $1 AND s.expires_at > now()`,
       [sha256(token)]
     );
-    const user = users[0];
-    if (!user) return null;
+    const row = users[0];
+    if (!row) return null;
+    const user = { id: row.id, name: row.name, email: row.email, emailVerified: Boolean(row.email_verified_at) };
     const memberships = await this.db.query<{ organization_id: string; name: string; role: OrganizationRole }>(
       `SELECT m.organization_id, o.name, m.role FROM memberships m JOIN organizations o ON o.id = m.organization_id
        WHERE m.user_id = $1 ORDER BY m.created_at`,

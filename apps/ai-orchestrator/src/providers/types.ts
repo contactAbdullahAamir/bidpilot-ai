@@ -61,8 +61,12 @@ export type RawValidation = {
  * Model provider adapter. Business rules (routing, ids, permissions,
  * citation mapping) live outside providers in deterministic code.
  */
+export type ProviderMode = "claude" | "openai" | "heuristic";
+
 export interface ModelProvider {
-  readonly mode: "claude" | "heuristic";
+  readonly mode: ProviderMode;
+  /** Model identifier shown to users; absent for the offline engine. */
+  readonly model?: string;
   analyze(input: { pages: DocumentPage[]; opportunity: { title: string; clientName: string; context: string } }): Promise<Result<RawAnalysis>>;
   assessEligibility(input: { requirement: Requirement; evidence: LabeledEvidence[]; organizationName: string }): Promise<Result<EligibilityVerdict>>;
   plan(input: { requirements: Requirement[]; summary: string; opportunity: { title: string; clientName: string } }): Promise<Result<RawPlanSection[]>>;

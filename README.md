@@ -36,6 +36,19 @@ With no `DATABASE_URL`, the API uses **embedded PGlite** (real PostgreSQL compil
 
 Copy `.env.example` to `.env` and set `ANTHROPIC_API_KEY`. The orchestrator then uses `claude-opus-5-5` with structured outputs, adaptive thinking, and server-side refusal fallback. Without a key it runs a deterministic **offline engine**: it only restates the RFP, quotes approved evidence, and flags everything else for a human. The sidebar shows which engine is active, and each run shows token usage and estimated cost.
 
+### Free models for testing
+
+Any OpenAI-compatible API works through the same prompts and schema validation. Put **one** key in `.env` (leave `ANTHROPIC_API_KEY` empty) and restart `npm run dev`:
+
+| Provider | Variable | Get a key | Default model |
+|---|---|---|---|
+| Google Gemini (free tier) | `GEMINI_API_KEY` | https://aistudio.google.com/apikey | `gemini-flash-latest` |
+| Groq (free tier) | `GROQ_API_KEY` | https://console.groq.com/keys | `openai/gpt-oss-120b` |
+| OpenRouter (`:free` models) | `OPENROUTER_API_KEY` | https://openrouter.ai/keys | `openrouter/free` (auto-picks a free model) |
+| Ollama (local, no key) | `LLM_PROVIDER=ollama` | https://ollama.com | `llama3.1` |
+
+Free model catalogs change often; if a default is retired, set `LLM_MODEL` to a current one. Override the model with `LLM_MODEL`, or point at any other server with `LLM_BASE_URL` + `LLM_API_KEY`. Free tiers have tight rate limits; the step runner retries 429s, but long RFPs may take a while. Free-tier prompts may be used by the provider for training, so test with the synthetic sample data, not real client documents.
+
 ## Production-like stack (Docker)
 
 ```bash
@@ -78,6 +91,14 @@ Human review ─► approve (immutable snapshot + SHA-256) ─► PDF rendered o
 | Approve knowledge | ✓ | ✓ | | | |
 | Approve proposals | ✓ | ✓ | | | ✓ |
 | Manage members | ✓ | ✓ | | | |
+
+## Accounts and email
+
+Teammates join by **email invitation** (Team & settings → Invite member). New accounts confirm their email, and anyone can reset a forgotten password from the sign-in page. Reset links are single-use, expire after 1 hour, and sign the user out on every device.
+
+Without `RESEND_API_KEY`, emails are printed to the API log (look for `──── email`), so you can click the links locally. To send real email, create a free [Resend](https://resend.com) key, verify your sending domain, and set `RESEND_API_KEY`, `MAIL_FROM` and `APP_URL` (the public web URL used in links).
+
+Sign-in, sign-up, password reset and invitation routes are rate-limited per IP address and per email. The limiter is in memory, so if you run more than one API replica, move it to Redis.
 
 ## Development
 

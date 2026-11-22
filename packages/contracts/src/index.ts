@@ -32,7 +32,47 @@ export const loginSchema = z.object({
 export const userSchema = z.object({
   id: z.string(),
   name: z.string(),
-  email: z.string()
+  email: z.string(),
+  emailVerified: z.boolean().optional()
+});
+
+const newPassword = z.string().min(8, "Use at least 8 characters").max(200);
+
+export const forgotPasswordSchema = z.object({ email: z.string().trim().toLowerCase().email() });
+export const resetPasswordSchema = z.object({ token: z.string().min(10).max(200), password: newPassword });
+export const verifyEmailSchema = z.object({ token: z.string().min(10).max(200) });
+export const changePasswordSchema = z.object({ currentPassword: z.string().min(1).max(200), newPassword });
+
+export const inviteMemberSchema = z.object({
+  email: z.string().trim().toLowerCase().email().max(200),
+  role: organizationRoleSchema
+});
+
+export const acceptInvitationSchema = z.object({
+  token: z.string().min(10).max(200),
+  /** Required when the invitee has no account yet. */
+  name: z.string().trim().min(1).max(120).optional(),
+  /** New password for a new account, or the existing account's password. */
+  password: z.string().min(1).max(200)
+});
+
+export const updateMemberSchema = z.object({ role: organizationRoleSchema });
+
+export const invitationSchema = z.object({
+  id: z.string(),
+  email: z.string(),
+  role: organizationRoleSchema,
+  invitedBy: z.string().nullable(),
+  expiresAt: isoDate,
+  createdAt: isoDate
+});
+
+export const invitationPreviewSchema = z.object({
+  email: z.string(),
+  role: organizationRoleSchema,
+  organizationName: z.string(),
+  invitedBy: z.string().nullable(),
+  accountExists: z.boolean()
 });
 
 export const membershipSchema = z.object({
@@ -41,18 +81,15 @@ export const membershipSchema = z.object({
   role: organizationRoleSchema
 });
 
+export const aiModeSchema = z.enum(["claude", "openai", "heuristic"]);
+export type AiMode = z.infer<typeof aiModeSchema>;
+
 export const sessionSchema = z.object({
   user: userSchema,
   memberships: z.array(membershipSchema),
   activeOrganizationId: z.string(),
-  aiMode: z.enum(["claude", "heuristic"]).optional()
-});
-
-export const addMemberSchema = z.object({
-  name: z.string().trim().min(1).max(120),
-  email: z.string().trim().toLowerCase().email(),
-  password: z.string().min(8).max(200),
-  role: organizationRoleSchema
+  aiMode: aiModeSchema.optional(),
+  aiModel: z.string().nullable().optional()
 });
 
 // ---------------------------------------------------------------------------
@@ -420,7 +457,7 @@ export const workflowSchema = z.object({
   status: workflowStatusSchema,
   currentStep: workflowStepNameSchema.nullable(),
   error: z.string().nullable(),
-  mode: z.enum(["claude", "heuristic"]).nullable(),
+  mode: aiModeSchema.nullable(),
   usage: z.object({
     inputTokens: z.number(),
     outputTokens: z.number(),
@@ -479,7 +516,10 @@ export type Login = z.infer<typeof loginSchema>;
 export type User = z.infer<typeof userSchema>;
 export type Membership = z.infer<typeof membershipSchema>;
 export type Session = z.infer<typeof sessionSchema>;
-export type AddMember = z.infer<typeof addMemberSchema>;
+export type InviteMember = z.infer<typeof inviteMemberSchema>;
+export type AcceptInvitation = z.infer<typeof acceptInvitationSchema>;
+export type Invitation = z.infer<typeof invitationSchema>;
+export type InvitationPreview = z.infer<typeof invitationPreviewSchema>;
 export type OpportunityStatus = z.infer<typeof opportunityStatusSchema>;
 export type CreateOpportunity = z.infer<typeof createOpportunitySchema>;
 export type UpdateOpportunity = z.infer<typeof updateOpportunitySchema>;

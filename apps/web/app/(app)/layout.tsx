@@ -6,6 +6,7 @@ import { useState, type ReactNode } from "react";
 import { Icons } from "../../components/icons";
 import { SessionProvider, useSession } from "../../components/session";
 import { Spinner } from "../../components/ui";
+import { api } from "../../lib/api";
 
 const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: Icons.dashboard },
@@ -26,6 +27,33 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     >
       <Shell>{children}</Shell>
     </SessionProvider>
+  );
+}
+
+function VerifyBanner({ email }: { email: string }) {
+  const [state, setState] = useState<"idle" | "sending" | "sent" | string>("idle");
+  async function resend() {
+    setState("sending");
+    try {
+      await api("/auth/resend-verification", { method: "POST" });
+      setState("sent");
+    } catch (e) {
+      setState((e as Error).message);
+    }
+  }
+  return (
+    <div className="verify-banner" role="status">
+      <Icons.alert size={16} />
+      <span className="grow">
+        Please confirm your email address. We sent a link to <strong>{email}</strong>.
+        {state !== "idle" && state !== "sending" && state !== "sent" && <span className="verify-error"> {state}</span>}
+      </span>
+      {state === "sent" ? (
+        <span className="verify-sent">Sent. Check your inbox.</span>
+      ) : (
+        <button className="link-btn" onClick={() => void resend()} disabled={state === "sending"}>{state === "sending" ? "Sending…" : "Resend email"}</button>
+      )}
+    </div>
   );
 }
 
@@ -67,9 +95,12 @@ function Shell({ children }: { children: ReactNode }) {
           })}
         </nav>
         <div className="sidebar-foot">
-          <div className={`mode-chip mode-${session.aiMode ?? "offline"}`} title={session.aiMode === "heuristic" ? "No Anthropic API key configured. The deterministic offline engine is drafting proposals." : undefined}>
+          <div
+            className={`mode-chip mode-${session.aiMode ?? "offline"}`}
+            title={session.aiMode === "heuristic" ? "No AI API key configured. The deterministic offline engine is drafting proposals." : session.aiModel ?? undefined}
+          >
             <span className="badge-dot" />
-            {session.aiMode === "claude" ? "AI: Claude" : session.aiMode === "heuristic" ? "AI: offline engine" : "AI service offline"}
+            {session.aiMode === "claude" ? "AI: Claude" : session.aiMode === "openai" ? `AI: ${session.aiModel ?? "external model"}` : session.aiMode === "heuristic" ? "AI: offline engine" : "AI service offline"}
           </div>
           <div className="user">
             <span className="avatar">{initials}</span>
@@ -88,6 +119,7 @@ function Shell({ children }: { children: ReactNode }) {
           <span className="brand-mark small">B</span>
           <strong>{organizationName}</strong>
         </header>
+        {session.user.emailVerified === false && <VerifyBanner email={session.user.email} />}
         {children}
       </div>
     </div>

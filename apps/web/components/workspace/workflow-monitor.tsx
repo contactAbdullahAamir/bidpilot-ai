@@ -51,7 +51,7 @@ export function WorkflowMonitor({ workflow, onChange, canRun }: { workflow: Work
           </div>
           <span className="muted small">
             Started {relativeTime(workflow.createdAt)} · {done}/{workflow.steps.length} steps
-            {workflow.mode && ` · ${workflow.mode === "claude" ? "Claude" : "offline engine"}`}
+            {workflow.mode && ` · ${workflow.mode === "claude" ? "Claude" : workflow.mode === "openai" ? "external model" : "offline engine"}`}
             {workflow.usage.estimatedCostUsd > 0 && ` · ~$${workflow.usage.estimatedCostUsd.toFixed(2)} (${Math.round((workflow.usage.inputTokens + workflow.usage.outputTokens) / 1000)}k tokens)`}
           </span>
         </div>

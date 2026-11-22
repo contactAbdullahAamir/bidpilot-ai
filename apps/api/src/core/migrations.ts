@@ -210,5 +210,37 @@ CREATE TABLE audit_log (
 );
 CREATE INDEX audit_log_org_idx ON audit_log (organization_id, created_at DESC)
 `
+  },
+  {
+    version: 3,
+    name: "account_security",
+    sql: `
+ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified_at timestamptz NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS password_changed_at timestamptz NULL;
+UPDATE users SET email_verified_at = created_at WHERE email_verified_at IS NULL;
+CREATE TABLE auth_tokens (
+  token_hash text PRIMARY KEY,
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  purpose text NOT NULL,
+  expires_at timestamptz NOT NULL,
+  used_at timestamptz NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX auth_tokens_user_idx ON auth_tokens (user_id, purpose);
+CREATE TABLE invitations (
+  id uuid PRIMARY KEY,
+  organization_id text NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  email text NOT NULL,
+  role text NOT NULL,
+  token_hash text NOT NULL UNIQUE,
+  invited_by uuid NULL REFERENCES users(id) ON DELETE SET NULL,
+  expires_at timestamptz NOT NULL,
+  accepted_at timestamptz NULL,
+  revoked_at timestamptz NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX invitations_org_idx ON invitations (organization_id, created_at DESC);
+CREATE INDEX sessions_user_idx ON sessions (user_id)
+`
   }
 ];

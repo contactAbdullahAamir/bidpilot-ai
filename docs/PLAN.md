@@ -14,7 +14,7 @@ It records what was built, where the build intentionally departs from the bluepr
 | 5 | **Retrieval = Postgres full-text search (tsvector + ts_rank)**, tenant- and approval-filtered. | No embedding provider is configured yet. FTS is deterministic and auditable. | Vector and hybrid retrieval (RRF) are deferred to the next phase. The retrieval interface already returns evidence packages. |
 | 6 | **Local filesystem object storage** behind a storage adapter. The API receives uploads (25 MB limit) and stores a SHA-256 checksum. | MinIO needs registry auth in some environments. | Signed direct-to-S3 uploads come later behind the same adapter. |
 | 7 | **Polling (2 s) with per-workflow event sequence numbers**, not WebSockets. | Simple, proxy-friendly, and replayable by `afterSequence`. | Swap to SSE or WebSocket later without contract changes. |
-| 8 | **Session auth** (scrypt passwords, opaque session tokens in an httpOnly cookie, hashed at rest) with organization memberships and role guards. | Replaces the development header boundary. | SSO and invitations come later. |
+| 8 | **Session auth** (scrypt passwords, opaque session tokens in an httpOnly cookie, hashed at rest) with organization memberships and role guards. | Replaces the development header boundary. | Email invitations, verification and password reset added in phase 9; SSO comes later. |
 
 ## Phases and status
 
@@ -26,6 +26,7 @@ It records what was built, where the build intentionally departs from the bluepr
 6. **Validation + approval**: compliance matrix, claim verification, targeted revision runs, reviewer decisions, immutable approved snapshot with checksum, audit. ✅
 7. **Frontend**: auth screens, dashboard and onboarding, opportunity workspace, requirement source viewer, Proposal Studio, compliance, review, knowledge base, live workflow monitor. ✅
 8. **Hardening**: PDF export from the approved snapshot only, unit and integration tests, docs. ✅ (Evaluation datasets, fault injection, and deployment come next.)
+9. **Accounts & security**: email verification, password reset (single-use, 1 h, signs out all devices), change password, email invitations (7 days, single use) with role changes and member removal guarded so a workspace always keeps an owner, per-IP and per-email rate limits on auth routes, security headers on web and API, transactional email via Resend with a dev console fallback. ✅
 
 ## Next phase (not built yet)
 
@@ -33,6 +34,6 @@ It records what was built, where the build intentionally departs from the bluepr
 - Embeddings with pgvector, hybrid RRF retrieval, and retrieval evaluation (Recall@K, MRR).
 - Client research agent using an approved web-search provider (Claude `web_search` with allowed domains).
 - OCR fallback for scanned pages, malware scanning, and signed direct uploads to S3.
-- PostgreSQL RLS as defense in depth, member invitations, SSO.
+- PostgreSQL RLS as defense in depth, SSO (Google / Microsoft), Redis-backed rate limits for multi-instance deployments.
 - WebSocket or SSE push, BullMQ outbox for ingestion and export jobs.
 - An evaluation corpus and reproducible eval reports.

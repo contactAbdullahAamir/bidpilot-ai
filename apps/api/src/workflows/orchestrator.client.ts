@@ -1,11 +1,12 @@
 import { Injectable, Logger } from "@nestjs/common";
+import type { AiMode } from "@bidpilot/contracts";
 import { internalToken } from "../auth/auth";
 
 /** HTTP client for the AI orchestrator service. */
 @Injectable()
 export class OrchestratorClient {
   private readonly logger = new Logger("Orchestrator");
-  private cachedMode: { value: "claude" | "heuristic" | undefined; at: number } = { value: undefined, at: 0 };
+  private cachedMode: { value: { mode: AiMode | undefined; model: string | null }; at: number } = { value: { mode: undefined, model: null }, at: 0 };
 
   get baseUrl(): string {
     return process.env.AI_ORCHESTRATOR_URL ?? "http://localhost:8000";
@@ -34,14 +35,22 @@ export class OrchestratorClient {
   }
 
   /** Which provider the orchestrator is running with (cached for 30s). */
-  async mode(): Promise<"claude" | "heuristic" | undefined> {
+  async mode(): Promise<AiMode | undefined> {
+    return (await this.engine()).mode;
+  }
+
+  /** Provider mode and model name (cached for 30s). */
+  async engine(): Promise<{ mode: AiMode | undefined; model: string | null }> {
     if (Date.now() - this.cachedMode.at < 30_000) return this.cachedMode.value;
-    let value: "claude" | "heuristic" | undefined;
+    let value: { mode: AiMode | undefined; model: string | null } = { mode: undefined, model: null };
     try {
       const response = await fetch(`${this.baseUrl}/api/health`, { signal: AbortSignal.timeout(1500) });
-      if (response.ok) value = ((await response.json()) as { mode?: "claude" | "heuristic" }).mode;
+      if (response.ok) {
+        const body = (await response.json()) as { mode?: AiMode; model?: string | null };
+        value = { mode: body.mode, model: body.model ?? null };
+      }
     } catch {
-      value = undefined;
+      /* orchestrator unreachable */
     }
     this.cachedMode = { value, at: Date.now() };
     return value;

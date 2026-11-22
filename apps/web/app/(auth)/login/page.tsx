@@ -34,7 +34,7 @@ function LoginForm() {
       <p className="muted">Sign in to your proposal workspace.</p>
       {error && <div className="alert alert-danger" role="alert">{error}</div>}
       <Field label="Work email">{(id) => <input id={id} type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} autoFocus />}</Field>
-      <Field label="Password">{(id) => <input id={id} type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />}</Field>
+      <Field label="Password" hint={<Link href="/forgot-password">Forgot your password?</Link>}>{(id) => <input id={id} type="password" autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} />}</Field>
       <Button variant="primary" type="submit" loading={busy} className="btn-block">Sign in</Button>
       <p className="muted center">New to BidPilot? <Link href="/signup">Create a workspace</Link></p>
     </form>
